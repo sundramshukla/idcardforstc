@@ -428,8 +428,25 @@ function App() {
         <input type="text" name="name" placeholder="नाम" value={details.name} onChange={handleChange} style={styles.input} />
         <input type="text" name="post" placeholder="पदनाम" value={details.post} onChange={handleChange} style={styles.input} />
         <input type="text" name="dept" placeholder="विभाग" value={details.dept} onChange={handleChange} style={styles.input} />
-        <input type="date" name="from_date" value={details.from_date} onChange={handleChange} style={styles.input} />
-        <input type="date" name="to_date" value={details.to_date} onChange={handleChange} style={styles.input} />
+<input
+  type="date"
+  name="from_date"
+  value={details.from_date || ""}
+  onChange={(e) =>
+    setDetails({ ...details, from_date: e.target.value })
+  }
+  style={styles.input}
+/>
+<input
+  type="date"
+  name="to_date"
+  value={details.to_date || ""}
+  onChange={(e) =>
+    setDetails({ ...details, to_date: e.target.value })
+  }
+  style={styles.input}
+/>
+
       </div>
 
       <button onClick={handlePrint} style={styles.btnGreen} disabled={loading}>
