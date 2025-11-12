@@ -619,4 +619,4 @@ export default App;
 
 
 
-          "https://idcardsundram.pythonanywhere.com/" + data.card_url;
+          // "https://idcardsundram.pythonanywhere.com/" + data.card_url;
