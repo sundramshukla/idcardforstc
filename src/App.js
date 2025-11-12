@@ -278,19 +278,21 @@ function App() {
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
-  // ✅ Change this base URL only when deploying
+  // ✅ Base API URL (Vercel uses env var, else fallback)
   const BASE_URL =
     process.env.REACT_APP_API_BASE_URL ||
     "https://idcardsundram.pythonanywhere.com";
 
-  // 🔹 Detect available cameras
+  // 🔹 Detect cameras
   useEffect(() => {
     async function loadDevices() {
       try {
         const allDevices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = allDevices.filter((d) => d.kind === "videoinput");
         setDevices(videoDevices);
-        if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId);
+        if (videoDevices.length > 0) {
+          setSelectedDeviceId(videoDevices[0].deviceId);
+        }
       } catch (err) {
         console.error("Camera detection error:", err);
       }
@@ -310,7 +312,7 @@ function App() {
         },
       });
       setStream(s);
-      if (videoRef.current) videoRef.current.srcObject = s;
+      videoRef.current.srcObject = s;
     } catch (err) {
       alert("कैमरा चालू नहीं हो सका! " + err.message);
     }
@@ -330,7 +332,7 @@ function App() {
     setStream(null);
   };
 
-  // ✅ Input handler
+  // ✅ Handle input
   const handleChange = (e) => {
     setDetails({
       ...details,
@@ -338,7 +340,7 @@ function App() {
     });
   };
 
-  // ✅ Reset form
+  // ✅ Reset
   const resetForm = () => {
     setPhoto(null);
     setDetails({
@@ -351,7 +353,7 @@ function App() {
     startCamera();
   };
 
-  // ✅ Backend API request
+  // ✅ Send data to backend and print
   const handlePrint = async () => {
     if (!photo) return alert("पहले फोटो लें!");
     if (!details.name || !details.post || !details.dept)
@@ -360,7 +362,9 @@ function App() {
     setLoading(true);
     try {
       const formData = new FormData();
-      Object.keys(details).forEach((key) => formData.append(key, details[key]));
+      Object.entries(details).forEach(([key, value]) =>
+        formData.append(key, value)
+      );
 
       const blob = await fetch(photo).then((r) => r.blob());
       formData.append("photo", blob, "photo.png");
@@ -372,61 +376,62 @@ function App() {
 
       const data = await res.json();
 
-      if (res.ok) {
-        const imageUrl = `${BASE_URL}/${String(data.card_url || "").replace(
-          /^\/+/,
-          ""
-        )}`;
-
-        // ✅ Hidden iframe print
-        const iframe = document.createElement("iframe");
-        iframe.style.position = "fixed";
-        iframe.style.width = "0";
-        iframe.style.height = "0";
-        iframe.style.border = "none";
-        document.body.appendChild(iframe);
-
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(`
-          <html>
-            <head><title>ID Card Print</title></head>
-            <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
-              <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
-            </body>
-          </html>
-        `);
-        iframe.contentDocument.close();
-
-        const img = iframe.contentDocument.querySelector("img");
-        img.onload = () => {
-          iframe.contentWindow.focus();
-          iframe.contentWindow.print();
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-            resetForm();
-          }, 1000);
-        };
-      } else {
+      if (!res.ok) {
         alert("Error: " + (data.error || "कुछ गड़बड़ हुई है"));
+        return;
       }
+
+      const imageUrl = `${BASE_URL}/${String(data.card_url || "").replace(
+        /^\/+/,
+        ""
+      )}`;
+
+      // ✅ Hidden iframe print
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
+
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(`
+        <html>
+          <head><title>ID Card Print</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
+            <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
+          </body>
+        </html>
+      `);
+      iframe.contentDocument.close();
+
+      const img = iframe.contentDocument.querySelector("img");
+      img.onload = () => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          resetForm();
+        }, 1000);
+      };
     } catch (err) {
-      console.error(err);
+      console.error("Server error:", err);
       alert("Server से संपर्क नहीं हो पाया!");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 Camera switch
+  // 🔹 Switch camera
   const handleCameraChange = (e) => {
     setSelectedDeviceId(e.target.value);
   };
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.heading}>🪪 ID Card Generator (React + Django)</h1>
+      <h1 style={styles.heading}>🪪 ID Card Generator</h1>
 
-      {/* 🔹 Camera Selector */}
+      {/* Camera Selector */}
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontWeight: "bold" }}>Camera चुनें: </label>
         <select
@@ -466,7 +471,7 @@ function App() {
         </>
       )}
 
-      {/* Inputs */}
+      {/* Input fields */}
       <div style={styles.inputBox}>
         <input
           type="text"
@@ -553,7 +558,6 @@ const styles = {
     height: 240,
     borderRadius: 12,
     border: "3px solid #007bff",
-    background: "#000",
   },
   preview: {
     width: 320,
