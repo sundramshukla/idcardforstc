@@ -264,11 +264,6 @@
 
 
 
-
-
-
-
-
 import React, { useRef, useState, useEffect } from "react";
 
 function App() {
@@ -356,54 +351,49 @@ function App() {
       const blob = await fetch(photo).then((r) => r.blob());
       formData.append("photo", blob, "photo.png");
 
-      const res = await fetch("http://127.0.0.1:8000/api/print-card/", {
+      const res = await fetch("https://idcardsundram.pythonanywhere.com/api/print-card/", {
         method: "POST",
         body: formData,
       });
 
       const data = await res.json();
       if (res.ok) {
-        const imageUrl = "http://127.0.0.1:8000" + data.card_url;
+        const imageUrl = "https://idcardsundram.pythonanywhere.com" + data.card_url;
 
         // ✅ Auto print popup
-if (res.ok) {
-  const imageUrl = "http://127.0.0.1:8000" + data.card_url;
+        // 🔹 Step 1: hidden iframe create करो
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.width = "0";
+        iframe.style.height = "0";
+        iframe.style.border = "none";
+        document.body.appendChild(iframe);
 
-  // 🔹 Step 1: hidden iframe create करो
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "none";
-  document.body.appendChild(iframe);
+        // 🔹 Step 2: iframe में HTML inject करो
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(`
+          <html>
+            <head><title>ID Card Print</title></head>
+            <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
+              <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
+            </body>
+          </html>
+        `);
+        iframe.contentDocument.close();
 
-  // 🔹 Step 2: iframe में HTML inject करो
-  iframe.contentDocument.open();
-  iframe.contentDocument.write(`
-    <html>
-      <head><title>ID Card Print</title></head>
-      <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
-        <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
-      </body>
-    </html>
-  `);
-  iframe.contentDocument.close();
-
-  // 🔹 Step 3: wait for image to load, then print
-  const img = iframe.contentDocument.querySelector("img");
-  img.onload = () => {
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    // cleanup
-    setTimeout(() => {
-      document.body.removeChild(iframe);
-      setPhoto(null);
-      setDetails({ name: "", post: "", dept: "", from_date: "", to_date: "" });
-      startCamera();
-    }, 1000);
-  };
-}
-
+        // 🔹 Step 3: wait for image to load, then print
+        const img = iframe.contentDocument.querySelector("img");
+        img.onload = () => {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          // cleanup
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            setPhoto(null);
+            setDetails({ name: "", post: "", dept: "", from_date: "", to_date: "" });
+            startCamera();
+          }, 1000);
+        };
 
         setTimeout(() => {
           setPhoto(null);
@@ -629,3 +619,19 @@ const styles = {
 };
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          "https://idcardsundram.pythonanywhere.com/" + data.card_url;
