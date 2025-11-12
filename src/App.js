@@ -266,13 +266,16 @@
 
 
 
+
+
+
 import React, { useRef, useState, useEffect } from "react";
 
 function App() {
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [photo, setPhoto] = useState(null);
-  const [details, setDetails] = useState({ name: "", post: "", dept: "" });
+  const [details, setDetails] = useState({ name: "", post: "", dept: "", from_date: "", to_date: "" });
   const [loading, setLoading] = useState(false);
 
   // 🔹 Camera list states
@@ -299,6 +302,7 @@ function App() {
   // ✅ कैमरा चालू करें
   const startCamera = async () => {
     try {
+      // पहले से चल रहे stream को बंद करें
       if (stream) stream.getTracks().forEach((t) => t.stop());
 
       const s = await navigator.mediaDevices.getUserMedia({
@@ -335,76 +339,87 @@ function App() {
   };
 
   // ✅ Backend को डेटा भेजें और Card बनवाएँ
-const handlePrint = async () => {
-  if (!photo) return alert("पहले फोटो लें!");
-  if (!details.name || !details.post || !details.dept)
-    return alert("सारी जानकारी भरें!");
+  const handlePrint = async () => {
+    if (!photo) return alert("पहले फोटो लें!");
+    if (!details.name || !details.post || !details.dept)
+      return alert("सारी जानकारी भरें!");
 
-  setLoading(true);
-  try {
-    const formData = new FormData();
-    formData.append("name", details.name);
-    formData.append("post", details.post);
-    formData.append("dept", details.dept);
-    const blob = await fetch(photo).then((r) => r.blob());
-    formData.append("photo", blob, "photo.png");
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", details.name);
+      formData.append("post", details.post);
+      formData.append("dept", details.dept);
+      formData.append("from_date", details.from_date);
+      formData.append("to_date", details.to_date);
 
-    const res = await fetch(
-      "https://idcardsundram.pythonanywhere.com/api/print-card/",
-      {
+      const blob = await fetch(photo).then((r) => r.blob());
+      formData.append("photo", blob, "photo.png");
+
+      const res = await fetch("http://127.0.0.1:8000/api/print-card/", {
         method: "POST",
         body: formData,
-      }
-    );
+      });
 
-    const data = await res.json();
+      const data = await res.json();
+      if (res.ok) {
+        const imageUrl = "http://127.0.0.1:8000" + data.card_url;
 
-    if (res.ok) {
-      const imageUrl =
-        "https://idcardsundram.pythonanywhere.com/" + data.card_url;
+        // ✅ Auto print popup
+if (res.ok) {
+  const imageUrl = "http://127.0.0.1:8000" + data.card_url;
 
-      // 🔹 Step 1: hidden iframe create करो
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "fixed";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "none";
-      document.body.appendChild(iframe);
+  // 🔹 Step 1: hidden iframe create करो
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "none";
+  document.body.appendChild(iframe);
 
-      // 🔹 Step 2: iframe में HTML inject करो
-      iframe.contentDocument.open();
-      iframe.contentDocument.write(`
-        <html>
-          <head><title>ID Card Print</title></head>
-          <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
-            <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
-          </body>
-        </html>
-      `);
-      iframe.contentDocument.close();
+  // 🔹 Step 2: iframe में HTML inject करो
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(`
+    <html>
+      <head><title>ID Card Print</title></head>
+      <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
+        <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
+      </body>
+    </html>
+  `);
+  iframe.contentDocument.close();
 
-      // 🔹 Step 3: wait for image to load, then print
-      const img = iframe.contentDocument.querySelector("img");
-      img.onload = () => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
+  // 🔹 Step 3: wait for image to load, then print
+  const img = iframe.contentDocument.querySelector("img");
+  img.onload = () => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    // cleanup
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+      setPhoto(null);
+      setDetails({ name: "", post: "", dept: "", from_date: "", to_date: "" });
+      startCamera();
+    }, 1000);
+  };
+}
+
+
         setTimeout(() => {
-          document.body.removeChild(iframe);
           setPhoto(null);
-          setDetails({ name: "", post: "", dept: "" });
+          setDetails({ name: "", post: "", dept: "", from_date: "", to_date: "" });
           startCamera();
-        }, 1000);
-      };
-    } else {
-      alert("Error: " + (data.error || "कुछ गड़बड़ हुई है"));
+        }, 2500);
+      } else {
+        alert("Error: " + (data.error || "कुछ गड़बड़ हुई है"));
+      }
+    } catch (err) {
+      alert("Server से संपर्क नहीं हो पाया!");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    alert("Server से संपर्क नहीं हो पाया!");
-    console.error(err);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // ✅ दोबारा फोटो लेने का ऑप्शन
   const retake = () => {
@@ -486,8 +501,27 @@ const handlePrint = async () => {
           value={details.dept}
           onChange={handleChange}
           style={styles.input}
+          
         />
+        <input
+          type="date"
+          name="from_date"
+          placeholder="From Date"
+          value={details.from_date}
+          onChange={handleChange}
+          style={styles.input}
+        />
+        <input
+          type="date"
+          name="to_date"
+          placeholder="To Date"
+          value={details.to_date}
+          onChange={handleChange}
+          style={styles.input}
+        />
+
       </div>
+      
 
       <button onClick={handlePrint} style={styles.btnGreen} disabled={loading}>
         {loading ? "प्रिंट हो रहा है..." : "🖨️ Print & Save Card"}
