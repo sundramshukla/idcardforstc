@@ -347,80 +347,78 @@ function App() {
   };
 
   // ✅ Backend को डेटा भेजें और Card बनवाएँ
-  const handlePrint = async () => {
-    if (!photo) return alert("पहले फोटो लें!");
-    if (!details.name || !details.post || !details.dept)
-      return alert("सारी जानकारी भरें!");
+const handlePrint = async () => {
+  if (!photo) return alert("पहले फोटो लें!");
+  if (!details.name || !details.post || !details.dept)
+    return alert("सारी जानकारी भरें!");
 
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("name", details.name);
-      formData.append("post", details.post);
-      formData.append("dept", details.dept);
-      const blob = await fetch(photo).then((r) => r.blob());
-      formData.append("photo", blob, "photo.png");
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append("name", details.name);
+    formData.append("post", details.post);
+    formData.append("dept", details.dept);
+    const blob = await fetch(photo).then((r) => r.blob());
+    formData.append("photo", blob, "photo.png");
 
-      const res = await fetch("https://idcardsundram.pythonanywhere.com/api/print-card/", {
+    const res = await fetch(
+      "https://idcardsundram.pythonanywhere.com/api/print-card/",
+      {
         method: "POST",
         body: formData,
-      });
+      }
+    );
 
-      const data = await res.json();
-      if (res.ok) {
-        const imageUrl = "https://idcardsundram.pythonanywhere.com/" + data.card_url;
+    const data = await res.json();
 
-          // 🔹 Step 1: hidden iframe create करो
-          const iframe = document.createElement("iframe");
-          iframe.style.position = "fixed";
-          iframe.style.width = "0";
-          iframe.style.height = "0";
-          iframe.style.border = "none";
-          document.body.appendChild(iframe);
+    if (res.ok) {
+      const imageUrl =
+        "https://idcardsundram.pythonanywhere.com/" + data.card_url;
 
-          // 🔹 Step 2: iframe में HTML inject करो
-          iframe.contentDocument.open();
-          iframe.contentDocument.write(`
-            <html>
-              <head><title>ID Card Print</title></head>
-              <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
-                <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
-              </body>
-            </html>
-          `);
-          iframe.contentDocument.close();
+      // 🔹 Step 1: hidden iframe create करो
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "none";
+      document.body.appendChild(iframe);
 
-          // 🔹 Step 3: wait for image to load, then print
-          const img = iframe.contentDocument.querySelector("img");
-          img.onload = () => {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
-            // cleanup
-            setTimeout(() => {
-              document.body.removeChild(iframe);
-              setPhoto(null);
-              setDetails({ name: "", post: "", dept: "" });
-              startCamera();
-            }, 1000);
-          };
-        }
+      // 🔹 Step 2: iframe में HTML inject करो
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(`
+        <html>
+          <head><title>ID Card Print</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
+            <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
+          </body>
+        </html>
+      `);
+      iframe.contentDocument.close();
 
-
+      // 🔹 Step 3: wait for image to load, then print
+      const img = iframe.contentDocument.querySelector("img");
+      img.onload = () => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        // cleanup
         setTimeout(() => {
+          document.body.removeChild(iframe);
           setPhoto(null);
           setDetails({ name: "", post: "", dept: "" });
           startCamera();
-        }, 2500);
-      } else {
-        alert("Error: " + (data.error || "कुछ गड़बड़ हुई है"));
-      }
-    } catch (err) {
-      alert("Server से संपर्क नहीं हो पाया!");
-      console.error(err);
-    } finally {
-      setLoading(false);
+        }, 1000);
+      };
+    } else {
+      alert("Error: " + (data.error || "कुछ गड़बड़ हुई है"));
     }
-  };
+  } catch (err) {
+    alert("Server से संपर्क नहीं हो पाया!");
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ✅ दोबारा फोटो लेने का ऑप्शन
   const retake = () => {
