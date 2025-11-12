@@ -268,38 +268,59 @@ function App() {
   const videoRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [photo, setPhoto] = useState(null);
-  const [details, setDetails] = useState({ name: "", post: "", dept: "", from_date: "", to_date: "" });
+  const [details, setDetails] = useState({
+    name: "",
+    post: "",
+    dept: "",
+    from_date: "",
+    to_date: "",
+  });
   const [loading, setLoading] = useState(false);
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
   useEffect(() => {
     async function loadDevices() {
-      const allDevices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = allDevices.filter((d) => d.kind === "videoinput");
-      setDevices(videoDevices);
-      if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId);
+      try {
+        const allDevices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = allDevices.filter((d) => d.kind === "videoinput");
+        setDevices(videoDevices);
+        if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId);
+      } catch (err) {
+        console.error("Camera detection error:", err);
+      }
     }
     loadDevices();
   }, []);
 
   const startCamera = async () => {
-    if (stream) stream.getTracks().forEach((t) => t.stop());
-    const s = await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined },
-    });
-    setStream(s);
-    videoRef.current.srcObject = s;
+    try {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      setStream(s);
+      videoRef.current.srcObject = s;
+    } catch (err) {
+      alert("कैमरा चालू नहीं हो सका! " + err.message);
+    }
   };
 
   const capturePhoto = () => {
+    if (!videoRef.current) return;
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(videoRef.current, 0, 0);
-    setPhoto(canvas.toDataURL("image/png"));
+    const imgData = canvas.toDataURL("image/png");
+    setPhoto(imgData);
     stream.getTracks().forEach((t) => t.stop());
+    setStream(null);
   };
 
   const handleChange = (e) => setDetails({ ...details, [e.target.name]: e.target.value });
@@ -312,12 +333,13 @@ function App() {
 
   const handlePrint = async () => {
     if (!photo) return alert("पहले फोटो लें!");
-    if (!details.name || !details.post || !details.dept) return alert("सारी जानकारी भरें!");
+    if (!details.name || !details.post || !details.dept)
+      return alert("सारी जानकारी भरें!");
 
     setLoading(true);
     try {
       const formData = new FormData();
-      Object.keys(details).forEach((key) => formData.append(key, details[key]));
+      for (let key in details) formData.append(key, details[key]);
       const blob = await fetch(photo).then((r) => r.blob());
       formData.append("photo", blob, "photo.png");
 
@@ -362,24 +384,32 @@ function App() {
         alert("Error: " + (data.error || "कुछ गड़बड़ हुई है"));
       }
     } catch (err) {
+      console.error(err);
       alert("Server से संपर्क नहीं हो पाया!");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCameraChange = (e) => setSelectedDeviceId(e.target.value);
+
   return (
     <div style={styles.page}>
-      <h1 style={styles.heading}>🪪 ID Card Generator</h1>
+      <h1 style={styles.heading}>🪪 ID Card Generator (React + Django)</h1>
 
+      {/* Camera Selector */}
       <div style={{ marginBottom: 10 }}>
-        <label>Camera:</label>
-        <select onChange={(e) => setSelectedDeviceId(e.target.value)} value={selectedDeviceId || ""}>
-          {devices.map((d, i) => (
-            <option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${i + 1}`}</option>
+        <label style={{ fontWeight: "bold" }}>Camera चुनें: </label>
+        <select onChange={handleCameraChange} value={selectedDeviceId || ""} style={styles.dropdown}>
+          {devices.map((device, i) => (
+            <option key={device.deviceId} value={device.deviceId}>
+              {device.label || `Camera ${i + 1}`}
+            </option>
           ))}
         </select>
-        <button onClick={startCamera} style={styles.btn}>▶️ Start</button>
+        <button onClick={startCamera} style={styles.btnBlueSmall}>
+          ▶️ Start
+        </button>
       </div>
 
       {!photo ? (
@@ -395,14 +425,14 @@ function App() {
       )}
 
       <div style={styles.inputBox}>
-        <input name="name" placeholder="नाम" value={details.name} onChange={handleChange} style={styles.input} />
-        <input name="post" placeholder="पदनाम" value={details.post} onChange={handleChange} style={styles.input} />
-        <input name="dept" placeholder="विभाग" value={details.dept} onChange={handleChange} style={styles.input} />
+        <input type="text" name="name" placeholder="नाम" value={details.name} onChange={handleChange} style={styles.input} />
+        <input type="text" name="post" placeholder="पदनाम" value={details.post} onChange={handleChange} style={styles.input} />
+        <input type="text" name="dept" placeholder="विभाग" value={details.dept} onChange={handleChange} style={styles.input} />
         <input type="date" name="from_date" value={details.from_date} onChange={handleChange} style={styles.input} />
         <input type="date" name="to_date" value={details.to_date} onChange={handleChange} style={styles.input} />
       </div>
 
-      <button onClick={handlePrint} disabled={loading} style={styles.btnGreen}>
+      <button onClick={handlePrint} style={styles.btnGreen} disabled={loading}>
         {loading ? "प्रिंट हो रहा है..." : "🖨️ Print & Save Card"}
       </button>
 
@@ -412,17 +442,18 @@ function App() {
 }
 
 const styles = {
-  page: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
+  page: { minHeight: "100vh", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" },
   heading: { color: "#222", marginBottom: 20 },
-  video: { width: 320, height: 240, borderRadius: 10, border: "3px solid #007bff" },
-  preview: { width: 320, height: 240, borderRadius: 10, border: "3px solid #28a745" },
-  btn: { marginLeft: 10, background: "#007bff", color: "#fff", border: "none", padding: "5px 10px", cursor: "pointer" },
-  btnPink: { background: "#d63384", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 6, marginTop: 10 },
-  btnOrange: { background: "#fd7e14", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 6, marginTop: 10 },
-  btnGreen: { background: "#28a745", color: "#fff", border: "none", padding: "10px 20px", borderRadius: 6, marginTop: 20 },
-  inputBox: { marginTop: 15, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" },
-  input: { width: 220, padding: 8, borderRadius: 6, border: "1px solid #ccc", textAlign: "center" },
-  footer: { marginTop: 30, color: "#555" },
+  dropdown: { padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc", marginRight: 10 },
+  btnBlueSmall: { padding: "6px 12px", borderRadius: 6, background: "#007bff", color: "#fff", border: "none" },
+  video: { width: 320, height: 240, borderRadius: 12, border: "3px solid #007bff" },
+  preview: { width: 320, height: 240, borderRadius: 12, border: "3px solid #28a745", objectFit: "cover" },
+  btnPink: { padding: "10px 16px", borderRadius: 8, background: "#d63384", color: "#fff", border: "none", marginTop: 10 },
+  btnOrange: { padding: "10px 16px", borderRadius: 8, background: "#fd7e14", color: "#fff", border: "none", marginTop: 10 },
+  btnGreen: { padding: "10px 16px", borderRadius: 8, background: "#28a745", color: "#fff", border: "none", marginTop: 15 },
+  inputBox: { marginTop: 15, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
+  input: { width: 220, padding: "8px 10px", borderRadius: 8, border: "1px solid #ccc", textAlign: "center" },
+  footer: { marginTop: 40, color: "#666" },
 };
 
 export default App;
