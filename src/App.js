@@ -278,12 +278,11 @@ function App() {
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
 
-  // ✅ Base API URL (Vercel uses env var, else fallback)
   const BASE_URL =
     process.env.REACT_APP_API_BASE_URL ||
     "https://idcardsundram.pythonanywhere.com";
 
-  // 🔹 Detect cameras
+  // Detect Cameras
   useEffect(() => {
     async function loadDevices() {
       try {
@@ -300,7 +299,7 @@ function App() {
     loadDevices();
   }, []);
 
-  // ✅ Start camera
+  // Start Camera
   const startCamera = async () => {
     try {
       if (stream) stream.getTracks().forEach((t) => t.stop());
@@ -318,7 +317,7 @@ function App() {
     }
   };
 
-  // ✅ Capture photo
+  // Capture Photo
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement("canvas");
@@ -332,7 +331,7 @@ function App() {
     setStream(null);
   };
 
-  // ✅ Handle input
+  // Input Change
   const handleChange = (e) => {
     setDetails({
       ...details,
@@ -340,7 +339,7 @@ function App() {
     });
   };
 
-  // ✅ Reset
+  // Reset Form
   const resetForm = () => {
     setPhoto(null);
     setDetails({
@@ -353,7 +352,7 @@ function App() {
     startCamera();
   };
 
-  // ✅ Send data to backend and print
+  // Print Function
   const handlePrint = async () => {
     if (!photo) return alert("पहले फोटो लें!");
     if (!details.name || !details.post || !details.dept)
@@ -365,7 +364,6 @@ function App() {
       Object.entries(details).forEach(([key, value]) =>
         formData.append(key, value)
       );
-
       const blob = await fetch(photo).then((r) => r.blob());
       formData.append("photo", blob, "photo.png");
 
@@ -373,7 +371,6 @@ function App() {
         method: "POST",
         body: formData,
       });
-
       const data = await res.json();
 
       if (!res.ok) {
@@ -386,7 +383,7 @@ function App() {
         ""
       )}`;
 
-      // ✅ Hidden iframe print
+      // Print in hidden iframe
       const iframe = document.createElement("iframe");
       iframe.style.position = "fixed";
       iframe.style.width = "0";
@@ -422,16 +419,12 @@ function App() {
     }
   };
 
-  // 🔹 Switch camera
-  const handleCameraChange = (e) => {
-    setSelectedDeviceId(e.target.value);
-  };
+  const handleCameraChange = (e) => setSelectedDeviceId(e.target.value);
 
   return (
     <div style={styles.page}>
       <h1 style={styles.heading}>🪪 ID Card Generator</h1>
 
-      {/* Camera Selector */}
       <div style={{ marginBottom: 10 }}>
         <label style={{ fontWeight: "bold" }}>Camera चुनें: </label>
         <select
@@ -450,7 +443,6 @@ function App() {
         </button>
       </div>
 
-      {/* Camera / Photo */}
       {!photo ? (
         <>
           <video ref={videoRef} autoPlay style={styles.video}></video>
@@ -471,7 +463,6 @@ function App() {
         </>
       )}
 
-      {/* Input fields */}
       <div style={styles.inputBox}>
         <input
           type="text"
@@ -500,17 +491,15 @@ function App() {
         <input
           type="date"
           name="from_date"
-          value={details.from_date || ""}
-          onChange={(e) =>
-            setDetails({ ...details, from_date: e.target.value })
-          }
+          value={details.from_date}
+          onChange={handleChange}
           style={styles.input}
         />
         <input
           type="date"
           name="to_date"
-          value={details.to_date || ""}
-          onChange={(e) => setDetails({ ...details, to_date: e.target.value })}
+          value={details.to_date}
+          onChange={handleChange}
           style={styles.input}
         />
       </div>
