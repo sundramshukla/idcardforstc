@@ -361,14 +361,14 @@ function App() {
       const blob = await fetch(photo).then((r) => r.blob());
       formData.append("photo", blob, "photo.png");
 
-      const res = await fetch("idcardsundram.pythonanywhere.com/api/print-card/", {
+      const res = await fetch("https://idcardsundram.pythonanywhere.com//api/print-card/", {
         method: "POST",
         body: formData,
       });
 
       const data = await res.json();
       if (res.ok) {
-        const imageUrl = "idcardsundram.pythonanywhere.com" + data.card_url;
+        const imageUrl = "https://idcardsundram.pythonanywhere.com/" + data.card_url;
 
         // ✅ Auto print popup
         const printWindow = window.open("", "_blank");
