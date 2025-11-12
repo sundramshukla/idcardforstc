@@ -361,7 +361,7 @@ function App() {
       const blob = await fetch(photo).then((r) => r.blob());
       formData.append("photo", blob, "photo.png");
 
-      const res = await fetch("https://idcardsundram.pythonanywhere.com//api/print-card/", {
+      const res = await fetch("https://idcardsundram.pythonanywhere.com/api/print-card/", {
         method: "POST",
         body: formData,
       });
@@ -370,23 +370,41 @@ function App() {
       if (res.ok) {
         const imageUrl = "https://idcardsundram.pythonanywhere.com/" + data.card_url;
 
-        // ✅ Auto print popup
-        const printWindow = window.open("", "_blank");
-        printWindow.document.write(`
-          <html>
-            <head><title>Print ID Photo</title></head>
-            <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#fff;">
-              <img src="${imageUrl}" style="width:105mm;height:151mm;object-fit:contain;" />
-              <script>
-                window.onload = function() {
-                  window.print();
-                  setTimeout(() => window.close(), 800);
-                };
-              </script>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
+          // 🔹 Step 1: hidden iframe create करो
+          const iframe = document.createElement("iframe");
+          iframe.style.position = "fixed";
+          iframe.style.width = "0";
+          iframe.style.height = "0";
+          iframe.style.border = "none";
+          document.body.appendChild(iframe);
+
+          // 🔹 Step 2: iframe में HTML inject करो
+          iframe.contentDocument.open();
+          iframe.contentDocument.write(`
+            <html>
+              <head><title>ID Card Print</title></head>
+              <body style="margin:0;display:flex;align-items:center;justify-content:center;background:#fff;">
+                <img src="${imageUrl}" style="width:100%;height:auto;object-fit:contain;" />
+              </body>
+            </html>
+          `);
+          iframe.contentDocument.close();
+
+          // 🔹 Step 3: wait for image to load, then print
+          const img = iframe.contentDocument.querySelector("img");
+          img.onload = () => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            // cleanup
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+              setPhoto(null);
+              setDetails({ name: "", post: "", dept: "" });
+              startCamera();
+            }, 1000);
+          };
+        }
+
 
         setTimeout(() => {
           setPhoto(null);
